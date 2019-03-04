@@ -1,0 +1,86 @@
+//the motor control in arduino mega 2560 used PID
+//by srduitno 2018.10.30  No.000001
+#include <Arduino.h>      //arduino library in platformio
+#include <DueTimer.h>     //定时器库的头文件
+#define A_In 2
+#define A_control_P 10
+#define A_control_S 11
+#define Pwmoutput_A 12
+#define B_In 3
+#define PID_debug 6
+/*#define P 4
+#define I 0.1
+#define D 12*/
+float P = 100;
+float I = 0.1;
+float D = 12;
+int Endcoder;
+int Target = 100;
+
+void motor_speed_measurement() { //电机脉冲检测中断
+   if(digitalRead(A_In) == 1)
+   {
+     if(digitalRead(B_In) == 1)
+     {
+       Endcoder++;
+     }
+     else if(digitalRead(B_In) == 0)
+     {
+       Endcoder--;
+     }
+   }
+   else if(digitalRead(A_In) == 0)
+   {
+     if(digitalRead(B_In) == 0)
+     {
+       Endcoder++;
+     }
+     else if(digitalRead(B_In) == 1)
+     {
+       Endcoder--;
+     }
+   }
+}
+
+void PID_debug_setup() {
+  
+}
+
+void motor_PID_control() {
+  static float Bias,Pwm,Intergral_bias,Last_bias;
+  Bias = Endcoder - Target;
+  Intergral_bias += Bias; 
+  Pwm = P * Bias + I * Intergral_bias + D * (Bias - Last_bias);
+  Last_bias = Bias;
+  if(Pwm >= 0){
+    digitalWrite(A_control_P,HIGH);
+    digitalWrite(A_control_S,LOW);
+    analogWrite(Pwmoutput_A,Pwm);     
+  }
+  if(Pwm < 0){
+    digitalWrite(A_control_P,LOW);
+    digitalWrite(A_control_S,HIGH);
+    Pwm = -Pwm;
+    analogWrite(Pwmoutput_A,Pwm);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(A_In,INPUT);
+  pinMode(B_In,INPUT);
+  pinMode(A_control_P,OUTPUT);
+  pinMode(A_control_S,OUTPUT);
+  pinMode(Pwmoutput_A,OUTPUT);
+  attachInterrupt( digitalPinToInterrupt(A_In), motor_speed_measurement, CHANGE);
+  attachInterrupt( digitalPinToInterrupt(PID_debug), motor_speed_measurement, RISING);
+  Timer4.attachInterrupt(motor_PID_control).setFrequency(50).start();
+
+}
+
+void loop() {
+  Serial.println(Endcoder);
+  
+  delay(20);
+  }
+
